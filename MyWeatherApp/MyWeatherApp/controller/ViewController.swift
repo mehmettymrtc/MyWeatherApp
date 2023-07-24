@@ -81,6 +81,15 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
         
         
     }
+
+    func calculateDate(unix: Int) -> String {
+        let date = Date(timeIntervalSinceReferenceDate: TimeInterval(unix))
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH"
+        
+        let dateString = formatter.string(from: date)
+        return dateString
+    }
     
     func updateLabels() {
         self.placeLabel.text = "Amsterdam"
@@ -104,7 +113,8 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "CollectionViewCell", for: indexPath) as! CollectionViewCell
-        cell.topLabel.text = "\(indexPath.row)"
+        let unix = self.weatherModel?.hourly?[indexPath.row].dt ?? 0
+        cell.topLabel.text = calculateDate(unix: unix)
         
         let kelvin =  self.weatherModel?.hourly?[indexPath.row].temp ?? 0
         let celcius = kelvin - 273
