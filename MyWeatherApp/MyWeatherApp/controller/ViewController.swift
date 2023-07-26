@@ -6,44 +6,42 @@
 //
 
 import UIKit
+import CoreLocation
+import CoreLocation.CLLocation
 
 
-class ViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+class ViewController: UIViewController, UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, CLLocationManagerDelegate{
     
     
     
     @IBOutlet weak var placeLabel: UILabel!
-    
     @IBOutlet weak var degreeLabel: UILabel!
-    
     @IBOutlet weak var conditionLabel: UILabel!
-    
-    
     @IBOutlet weak var collectionView: UICollectionView!
     
     var weatherModel : WeatherResponseApi?
-    
-    
-    
+    var locationManager = CLLocationManager()
+    var currentLocation : CLLocation?
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        self.collectionView.delegate = self
+        self.collectionView.dataSource = self
+        self.locationManager.delegate = self
+        self.locationManager.desiredAccuracy = kCLLocationAccuracyBest // en iyi konum
+        self.locationManager.requestWhenInUseAuthorization()
+        self.locationManager.startUpdatingLocation()
+        self.locationManager.startUpdatingHeading()
+        self.getWeather()
+  
+    }
+
+    func getWeather(){
         
-        collectionView.delegate = self
-        collectionView.dataSource = self
-        
-        
-        
-        
-//        let kagithane = "lat=41.112354&lon=29.019973"
-        let amsterdam = "lat=52.36700697548092&lon=4.904644729211858"
-        
-        let url = URL(string: "https://api.openweathermap.org/data/3.0/onecall?" + "\(amsterdam)" + "&appid=f7b5bad894293e8526d40680060bce2a")!
+      //  let amsterdam = "lat=52.36700697548092&lon=4.904644729211858"
+        let url = URL(string: "https://api.openweathermap.org/data/3.0/onecall?" + "\(self.convertLocationToUrl())" + "&appid=f7b5bad894293e8526d40680060bce2a")!
         
         let session = URLSession.shared
-        
-        
-        
         
         let task = session.dataTask(with: url) { data, response, error in
             if error != nil {
@@ -78,10 +76,34 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
             
         }
         task.resume()
-        
-        
+    }
+    
+    func convertLocationToUrl() -> String {
+        let url = "lat=" + "\(String(describing: self.currentLocation?.coordinate.latitude ?? 52.36700697548092))" + "&lon=" + "\(String(describing: self.currentLocation?.coordinate.longitude ?? 4.904644729211858))"
+        return url
+
+    }
+    
+    func getAddress(){
+        guard let  location = self.currentLocation else {return}
+        let geocode = CLGeocoder()
+        geocode.reverseGeocodeLocation(location){placemark, error in
+            if placemark != nil {
+                let place = placemark?.first
+                self.placeLabel.text = place?.administrativeArea
+            }
+        }
     }
 
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        
+        self.currentLocation = locations[0]
+        self.getAddress()
+        self.getWeather()
+        
+    }
+    
     func calculateDate(unix: Int) -> String {
         let date = Date(timeIntervalSinceReferenceDate: TimeInterval(unix))
         let formatter = DateFormatter()
@@ -92,7 +114,6 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
     }
     
     func updateLabels() {
-        self.placeLabel.text = "Amsterdam"
         
         let kelvin =  self.weatherModel?.current?.temp ?? 10
         let celcius = kelvin - 273
@@ -115,6 +136,8 @@ class ViewController: UIViewController, UICollectionViewDelegate, UICollectionVi
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "CollectionViewCell", for: indexPath) as! CollectionViewCell
         let unix = self.weatherModel?.hourly?[indexPath.row].dt ?? 0
         cell.topLabel.text = calculateDate(unix: unix)
+        
+        
         
         let kelvin =  self.weatherModel?.hourly?[indexPath.row].temp ?? 0
         let celcius = kelvin - 273
